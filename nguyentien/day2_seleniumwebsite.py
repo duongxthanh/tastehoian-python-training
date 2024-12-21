@@ -3,6 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
+import csv
 
 # Khởi động trình duyệt
 driver = webdriver.Chrome()  # Đảm bảo bạn đã cài đặt ChromeDriver
@@ -32,11 +33,23 @@ try:
 
     # Lấy tất cả bình luận
     comments = driver.find_elements(By.CSS_SELECTOR, ".review-comment__content ")
+    name = driver.find_elements(By.CSS_SELECTOR, ".review-comment__user-name")
+    time = driver.find_elements(By.CSS_SELECTOR, ".review-comment__created-date span")
     comment_list = [comment.text for comment in comments]
+    name_list = [username.text for username in name]
+    time_list = [usernametime.text for usernametime in time]
+    print(f"Tìm thấy {len(comments)} bình luận, {len(name)} tên, {len(time) if 'times' in locals() else 0} thời gian.")
 
-    print(f"Tìm thấy {len(comments)} bình luận")
-    for i, review in enumerate(comment_list, 1):
-        print(f"Bình luận {i}: {review}")
+    for i, (review, adminname,admintime) in enumerate(zip(comment_list, name_list,time_list), 1):
+        print(f"{i}. {adminname}:{admintime}: {review}")
+
+    with open('comments.csv', mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Tên','thời gian bình luận','Bình luận'])
+        for adminname, review in zip(name_list, comment_list):
+            writer.writerow([adminname, admintime, review])
+
+    print("Dữ liệu đã được lưu vào file 'comments.csv' thành công.")
 
 except Exception as e:
     print(f"Đã xảy ra lỗi: {e}")
