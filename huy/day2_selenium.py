@@ -2,8 +2,9 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 import time
+import csv
 
-# Hàm để trích xuất comment từ YouTube
+# Hàm để trích xuất bình luận, tên người bình luận, thời gian bình luận và số lượt thích
 def get_youtube_comments(video_url):
     # Khởi chạy trình duyệt Chrome
     driver = webdriver.Chrome()
@@ -30,17 +31,45 @@ def get_youtube_comments(video_url):
                 break
             last_height = new_height
 
-        # Tìm các bình luận theo class
-        #comments = driver.find_elements(By.CSS_SELECTOR, 'div#content yt-attributed-string span.yt-core-attributed-string')
-        comments = driver.find_elements(By.XPATH, "//div[@id='content']//yt-attributed-string//span[@class='yt-core-attributed-string yt-core-attributed-string--white-space-pre-wrap']")
-        comment_list = [comment.text for comment in comments]
+        # Tìm tất cả các phần tử cha chứa thông tin bình luận
+        comment_containers = driver.find_elements(By.XPATH, "//ytd-comment-thread-renderer")
 
-        # In các bình luận ra console
+        # Lấy thông tin từ từng phần tử cha
+        comment_data = []
+        for index, container in enumerate(comment_containers, start=1):
+            try:
+                # Lấy tên người bình luận
+                author_name = container.find_element(By.XPATH, ".//a[@id='author-text']//span").text.strip()
+
+                # Lấy nội dung bình luận
+                comment_text = container.find_element(By.XPATH, ".//yt-attributed-string[@id='content-text']").text.strip()
+
+                # Lấy thời gian bình luận
+                time_posted = container.find_element(By.XPATH, ".//span[@id='published-time-text']//a").text.strip()
+
+                # Lấy số lượt thích
+                like_count = container.find_element(By.XPATH, ".//span[@id='vote-count-middle']").text.strip()
+                like_count = like_count if like_count else "0"  # Nếu không có số like, mặc định là "0"
+
+                # Thêm thông tin vào danh sách
+                comment_data.append((index, author_name, comment_text, time_posted, like_count))
+            except Exception as e:
+                # Nếu có lỗi khi lấy dữ liệu, bỏ qua phần tử đó
+                print(f"Lỗi: {e}")
+                continue
+
+        # In dữ liệu ra console
         print("\n--- Bình luận trên YouTube ---\n")
-        for i, comment in enumerate(comment_list, 1):
-            print(f"{i}: {comment}")
+        for index, author, comment, time_posted, likes in comment_data:
+            print(f"{index}. {author} ({time_posted}, Likes: {likes}): {comment}")
 
-        return comment_list
+        # Lưu dữ liệu vào file CSV
+        with open("youtube_comments.csv", "w", newline="", encoding="utf-8") as file:
+            writer = csv.writer(file)
+            writer.writerow(["Index", "Author", "Comment", "Time Posted", "Likes"])
+            writer.writerows(comment_data)
+
+        return comment_data
 
     finally:
         # Đóng trình duyệt
