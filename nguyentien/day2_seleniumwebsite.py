@@ -18,31 +18,47 @@ try:
     scroll_pause_time = 2  # Thời gian tạm dừng giữa các lần cuộn
     last_height = driver.execute_script("return document.documentElement.scrollHeight")
 
-    # Cuộn trang 5 lần
+    # Cuộn trang để đảm bảo các phần tử tải đầy đủ
     for _ in range(5):  # Cuộn xuống 5 lần
         driver.execute_script("window.scrollTo(0, 3200);")
         time.sleep(scroll_pause_time)
 
-    # Tìm nút "Xem thêm" nếu có
-    try:
-        show_more_button = driver.find_elements(By.CSS_SELECTOR, " span .show-more-content")
-        show_more_button.click()  # Nhấp vào nút "Xem thêm"
-        time.sleep(2)  # Chờ 2 giây để tải bình luận
-    except Exception as e:
-        print("Không tìm thấy nút 'Xem thêm' hoặc không cần nhấn")
+    # Tạo danh sách để lưu bình luận, tên và thời gian
+    comment_list = []
+    name_list = []
+    time_list = []
 
-    # Lấy tất cả bình luận
-    comments = driver.find_elements(By.CSS_SELECTOR, ".review-comment__content ")
-    name = driver.find_elements(By.CSS_SELECTOR, ".review-comment__user-name")
-    time = driver.find_elements(By.CSS_SELECTOR, ".review-comment__created-date span")
-    comment_list = [comment.text for comment in comments]
-    name_list = [username.text for username in name]
-    time_list = [usernametime.text for usernametime in time]
-    print(f"Tìm thấy {len(comments)} bình luận, {len(name)} tên, {len(time) if 'times' in locals() else 0} thời gian.")
+    # Tìm và nhấn các nút chuyển trang bình luận
+    while True:
+        # Lấy bình luận hiện tại
+        comments = driver.find_elements(By.CSS_SELECTOR, ".review-comment__content")
+        names = driver.find_elements(By.CSS_SELECTOR, ".review-comment__user-name")
+        times = driver.find_elements(By.CSS_SELECTOR, ".review-comment__created-date span")
 
-    for i, (review, adminname,admintime) in enumerate(zip(comment_list, name_list,time_list), 1):
-        print(f"{i}. {adminname}:{admintime}: {review}")
+        # Lưu dữ liệu
+        comment_list = [comment.text for comment in comments]
+        name_list = [username.text for username in names]
+        time_list = [usernametime.text for usernametime in times]
+        print(
+            f"Tìm thấy {len(comments)} bình luận, {len(names)} tên, {len(times) if 'times' in locals() else 0} thời gian.")
 
+        # Tìm nút "Next" và nhấn nếu có
+        try:
+            next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".customer-reviews__pagination ul.loVmKB a.next svg")))
+            next_button.click()
+            time.sleep(2)  # Chờ trang tiếp theo tải
+        except Exception as e:
+            print("Không tìm thấy nút 'Next' hoặc đã đến trang cuối.")
+            break
+
+    # Hiển thị số lượng dữ liệu
+    print(f"Tìm thấy {len(comment_list)} bình luận, {len(name_list)} tên, {len(time_list)} thời gian.")
+
+    # In dữ liệu ra màn hình
+    for i, (review, adminname, admintime) in enumerate(zip(comment_list, name_list, time_list), 1):
+        print(f"{i}. {adminname} ({admintime}): {review}")
+
+    # Lưu dữ liệu vào file CSV
     with open('comments.csv', mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
         writer.writerow(['Tên','thời gian bình luận','Bình luận'])
@@ -50,7 +66,6 @@ try:
             writer.writerow([adminname, admintime, review])
 
     print("Dữ liệu đã được lưu vào file 'comments.csv' thành công.")
-
 except Exception as e:
     print(f"Đã xảy ra lỗi: {e}")
 
